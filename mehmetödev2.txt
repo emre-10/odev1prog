@@ -1,0 +1,162 @@
+def shoot(self):
+       
+        now = pygame.time.get_ticks()
+        if now - self.last_shot > self.shoot_delay:
+            self.last_shot = now
+            if self.power == 1:    ##geminin güç 1 atısla aşağıdakiler olsun
+                bullet = Bullet(self.rect.centerx, self.rect.top)
+                all_sprites.add(bullet)
+                bullets.add(bullet)
+                shooting_sound.play()
+            if self.power == 2: ### eğer güç seviyesi ikiyse aşağıdakiler olsun
+                bullet1 = Bullet(self.rect.left, self.rect.centery)
+                bullet2 = Bullet(self.rect.right, self.rect.centery)
+                all_sprites.add(bullet1)
+                all_sprites.add(bullet2)
+                bullets.add(bullet1)
+                bullets.add(bullet2)
+                shooting_sound.play()
+
+            
+            if self.power >= 3: ##### eğer güç seviyesi üç ise aşşagıdakiler olsun
+                bullet1 = Bullet(self.rect.left, self.rect.centery)
+                bullet2 = Bullet(self.rect.right, self.rect.centery)
+                missile1 = Missile(self.rect.centerx, self.rect.top)
+                all_sprites.add(bullet1)
+                all_sprites.add(bullet2)
+                all_sprites.add(missile1)
+                bullets.add(bullet1)
+                bullets.add(bullet2)
+                bullets.add(missile1)
+                shooting_sound.play()
+
+    def powerup(self): ##
+        self.power += 1 ### güç her alıdığında  
+        self.power_time = pygame.time.get_ticks() ## her güçlendime aldğındaki zamanı
+
+    def hide(self):
+        self.hidden = True
+        self.hide_timer = pygame.time.get_ticks()
+        self.rect.center = (YATAY_EKRAN_BOYUTU/ 2, DİKEY_EKRAN_BOYUTU + 200)
+
+
+##### BURASI YUKARIDAN DÜŞEN GÖKTAŞALRINI KONTOROL ETTİĞİMİZ
+class Mob(pygame.sprite.Sprite):
+    def __init__(self):   
+        pygame.sprite.Sprite.__init__(self)
+        self.image_orig = random.choice(Meteor_Resimleri)
+        self.image_orig.set_colorkey(SİYAH)
+        self.image = self.image_orig.copy()
+        self.rect = self.image.get_rect()
+        self.radius = int(self.rect.width *.90 / 2)
+        self.rect.x = random.randrange(0, YATAY_EKRAN_BOYUTU - self.rect.width)
+        self.rect.y = random.randrange(-150, -100)
+        self.speedy = random.randrange(5, 20)       
+
+        
+        self.speedx = random.randrange(-3, 3) ## GÖKTAŞLARININ SAĞA SOLA GİTME HIZI
+ 
+        
+        self.rotation = 0
+        self.rotation_speed = random.randrange(-8, 8)  ### göktaşlarının yere düşme ve kendi ekseninde dönme hızı
+        self.last_update = pygame.time.get_ticks()  
+        
+    def rotate(self):
+        time_now = pygame.time.get_ticks()
+        if time_now - self.last_update > 50:
+            self.last_update = time_now
+            self.rotation = (self.rotation + self.rotation_speed) % 360 
+            new_image = pygame.transform.rotate(self.image_orig, self.rotation)
+            old_center = self.rect.center
+            self.image = new_image
+            self.rect = self.image.get_rect()
+            self.rect.center = old_center
+
+    def update(self):
+        self.rotate()
+        self.rect.x += self.speedx
+        self.rect.y += self.speedy
+             
+                    ###
+        if (self.rect.top > DİKEY_EKRAN_BOYUTU + 10) or (self.rect.left < -25) or (self.rect.right > YATAY_EKRAN_BOYUTU+ 20):
+            self.rect.x = random.randrange(0, YATAY_EKRAN_BOYUTU - self.rect.width)
+            self.rect.y = random.randrange(-100, -40)
+            self.speedy = random.randrange(1,8) ### gelen göktaşının hızını ayarlar      
+
+
+class Pow(pygame.sprite.Sprite):
+    def __init__(self, center):
+        pygame.sprite.Sprite.__init__(self)
+        self.type = random.choice(['shield', 'gun']) ### güçlendirme ve kalkanın random olarak gelmesi 
+        self.image = powerup_images[self.type]
+        self.image.set_colorkey(SİYAH) ## KALKAN VE GÜÇLEMDİRMENİN ARKA PLANI
+        self.rect = self.image.get_rect()        
+        self.rect.center = center
+        self.speedy = 3 ## DÜŞEN GÜÇLENDİRME VE KALKANIN YERE DÜŞME HIZI
+
+    def update(self):
+       
+        self.rect.y += self.speedy
+        if self.rect.top > DİKEY_EKRAN_BOYUTU:
+            self.kill()
+
+            
+
+
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = Lazer_Atışı ## LAZER IŞINI ÇAĞIRIR
+        self.image.set_colorkey(SİYAH) ## LAZER IŞIĞININ ARKA PLANINI SİYAH YAPAR
+        self.rect = self.image.get_rect() 
+        self.rect.bottom = y 
+        self.rect.centerx = x
+        self.speedy = -10 ## IŞININ HIZINI AYARLAR
+
+    def update(self):
+        
+        self.rect.y += self.speedy
+        
+        if self.rect.bottom < 0:
+            self.kill()
+
+
+class Missile(pygame.sprite.Sprite): ### OYUNUN 3 SEVİYE GÜÇLENDİRİCİDEKİ ATAN FÜZENİN AYARLARI
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = Füze_atışı #### FÜZEYİ PNGSİNİ ÇAĞIRIR
+        self.image.set_colorkey(SİYAH) ## FÜZENİN ARKA PLANINI SİYAH YAPAR
+        self.rect = self.image.get_rect()
+        self.rect.bottom = y  ## FÜZENİN Y DEKİ DURUMU
+        self.rect.centerx = x  ## UZAY GEMİSİ NEREDEYSE FÜZE ORADAN BAŞLAR
+        self.speedy = -10 ## FÜZENİN HIZI
+
+    def update(self):
+        self.rect.y += self.speedy
+        if self.rect.bottom < 0:
+            self.kill()
+
+
+## gerekli resim dosyalarını çağırma
+
+ARKAPLAN = pygame.image.load(path.join(FOTOĞRAFLAR , 'starfield.png')).convert() ## Arkaplanı çağıran komut 
+background_rect = ARKAPLAN.get_rect()
+
+Uzay_Gemisi = pygame.image.load(path.join(FOTOĞRAFLAR, 'uzay gemisi.png')).convert()
+Uzay_Gemisi_Küçük = pygame.transform.scale(Uzay_Gemisi, (25, 19)) ### küçük olan uzay gemisinin boyutu
+Uzay_Gemisi_Küçük.set_colorkey(SİYAH) ## küçük olan uzay gemisinin rengi
+Lazer_Atışı = pygame.image.load(path.join(FOTOĞRAFLAR, 'laserRed16.png')).convert()
+Füze_atışı = pygame.image.load(path.join(FOTOĞRAFLAR, 'missile.png')).convert_alpha()
+Meteor_Resimleri = [] ## meteor resimleri
+Meteorların_Listesi = [   ### meteorların listesi
+    'meteorBrown_big1.png',
+    'meteorBrown_big2.png', 
+    'meteorBrown_med1.png', 
+    'meteorBrown_med3.png',
+    'meteorBrown_small1.png',
+    'meteorBrown_small2.png',
+    'meteorBrown_tiny1.png'
+]
+
+for image in Meteorların_Listesi:
+    Meteor_Resimleri.append(pygame.image.load(path.join(FOTOĞRAFLAR, image)).convert())
