@@ -1,0 +1,153 @@
+## meteor patlaması ayarları
+explosion_anim = {}
+explosion_anim['lg'] = []
+explosion_anim['sm'] = []
+explosion_anim['player'] = []
+for i in range(9):
+    filename = 'regularExplosion0{}.png'.format(i)
+    img = pygame.image.load(path.join(FOTOĞRAFLAR, filename)).convert()
+    img.set_colorkey(SİYAH)
+   #### meteor patlaması boyutları
+    img_lg = pygame.transform.scale(img, (75, 75))  #### metorların patlama efekti
+    explosion_anim['lg'].append(img_lg)
+    img_sm = pygame.transform.scale(img, (200, 200)) ### uazay gemisinin patlama efekti
+    explosion_anim['sm'].append(img_sm)
+
+
+    filename = 'sonicExplosion0{}.png'.format(i)
+    img = pygame.image.load(path.join(FOTOĞRAFLAR, filename)).convert()
+    img.set_colorkey(SİYAH)
+    explosion_anim['player'].append(img)
+
+## güçlendirmelerin png dosyası
+powerup_images = {}
+powerup_images['shield'] = pygame.image.load(path.join(FOTOĞRAFLAR, 'can.png')).convert()
+powerup_images['gun'] = pygame.image.load(path.join(FOTOĞRAFLAR, 'güç.png')).convert()
+
+
+
+### ses dosyalarını yükleme
+
+shooting_sound = pygame.mixer.Sound(path.join(SES_DOSYALARI, 'jump.wav')) ##ateş sırasında bu sesi çalsın
+expl_sounds = []
+for sound in ['enemy_explosion.wav', 'expl6.wav']:   ### Patlama anında ikisinden biri rastgele çalsın
+    expl_sounds.append(pygame.mixer.Sound(path.join(SES_DOSYALARI, sound)))
+
+pygame.mixer.music.set_volume(1.0)     ### ses seviyesi
+
+player_die_sound = pygame.mixer.Sound(path.join(SES_DOSYALARI, 'enemy_explosion.wav'))  #Canın bittiğinde bu sesi çal
+
+
+
+Oyunun_aktif = True ### sonsuz dongü aktif
+menu_display = True
+while Oyunun_aktif:
+    if menu_display:
+        main_menu()
+        pygame.time.wait(1000)  #### hazırlan ekranını kaç saniye açık durcağını ayarlar
+
+    
+        pygame.mixer.music.stop() ### oyunun menü müziği durdurur
+       
+        pygame.mixer.music.load(path.join(SES_DOSYALARI, 'yıldızlar arasışarkıasd.mp3')) ### oyunun içindeki müziği başlatır
+        pygame.mixer.music.play(1)     #### oyunn müziğini sonsuz kere oynatır
+        
+        menu_display = False ## bu kısmı kapatır
+        
+        ###oyunnun iç kısmını çağırır
+        all_sprites = pygame.sprite.Group() 
+        player = Player()  ##uzay geminiçağırır
+        all_sprites.add(player)  
+
+        
+        mobs = pygame.sprite.Group()  #meteorları çağırır
+        for i in range(10):      ##### meteorları rastgele olarak çağırır
+          
+            newmob()
+
+       
+        bullets = pygame.sprite.Group()
+        powerups = pygame.sprite.Group() ## güçlendirmeyle
+
+       
+        SKOR = 0 ##### SKOR EKRANI
+        
+    #1 Process input/events
+    clock.tick(FPS)     ## Oyunu sabit bir hızda çalıştırır
+    for event in pygame.event.get():    ###şimdiye kadar gerçekleşen tüm olayları alır ve sekmelerini tutar.
+        
+        if event.type == pygame.QUIT:  ##  oyunu kapatırsak oyun kapanır
+            Oyunun_aktif = False  # oynu bitir
+
+        ## oyun içindeyken ESC ye basınca oyunu kapat
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                Oyunun_aktif = False
+      
+
+     ## lazerin meteorlara çarpıp çarpmadığını kontorol et 
+    all_sprites.update() 
+
+   ###### eğer karptıysa patlama resimlerini koy ve meteorları yeniden rastgele oluştur
+    hits = pygame.sprite.groupcollide(mobs, bullets, True, True)
+  
+    for hit in hits:
+        SKOR += 50 - hit.radius         ### skor sayısını ayarlar büyük ve küçük meteorlara göre
+        random.choice(expl_sounds).play() #### meteorları patladığımızda bu sesi çal 
+       
+        expl = Explosion(hit.rect.center, 'lg')
+        all_sprites.add(expl)
+        if random.random() > 0.9:
+            pow = Pow(hit.rect.center)
+            all_sprites.add(pow)
+            powerups.add(pow)
+        newmob()      ##### meteorlar patlayanların yenıne yeni meteorlar gelsin
+
+#### patlatılan nesneler meteorlar ortaya çıkar
+
+    ## check if the player collides with the mob
+    hits = pygame.sprite.spritecollide(player, mobs, True, pygame.sprite.collide_circle)        ### vurulan meteorların kaybolmasını sağlar
+    for hit in hits:
+        player.shield -= hit.radius * 2 ##### verilen kalkan miktarı
+        expl = Explosion(hit.rect.center, 'sm')
+        all_sprites.add(expl)
+        newmob() ##### kalkanı yenıden çağır
+        if player.shield <= 0: 
+            player_die_sound.play()
+            death_explosion = Explosion(player.rect.center, 'player')
+            all_sprites.add(death_explosion)
+
+            player.hide()
+            player.lives -= 1
+            player.shield = 100
+
+    ## if the player hit a power up
+    hits = pygame.sprite.spritecollide(player, powerups, True)
+    for hit in hits:
+        if hit.type == 'shield':
+            player.shield += random.randrange(10, 30)
+            if player.shield >= 100: # random olarak 0-100 arası can yeniler
+                player.shield = 100  ## kalkan en fazla 100 can yeniler
+        if hit.type == 'gun':
+            player.powerup()
+
+    ### geminin vanı biterse geminin patlama sahnesinsen sonra oyun kapansın
+    if player.lives == 0 and not death_explosion.alive():
+        Oyunun_aktif = False
+
+                            
+    PENCERE.fill(SİYAH)  ## gemi patladıktan sonra ekran siyah olsun
+    
+    PENCERE.blit(ARKAPLAN, background_rect) ##arkaplan kapansın
+
+    all_sprites.draw(PENCERE) ## ekrana yaz
+    draw_text(PENCERE, str(SKOR), 18, YATAY_EKRAN_BOYUTU / 2, 10)     ### ekrana skoru yaz
+    draw_shield_bar(PENCERE, 5, 5, player.shield)  ## ekrana kalkan miktarını koy
+
+   
+    draw_lives(PENCERE, YATAY_EKRAN_BOYUTU - 100, 5, player.lives, Uzay_Gemisi_Küçük) ### ekrana can miktarını koy
+
+    
+    pygame.display.flip()       #### yukarıda yazan komutları ekrana ver
+ 
+pygame.quit()
