@@ -1,0 +1,187 @@
+#future modülünden division özelliğini aç
+from __future__ import division
+#ramdom modlünü getir
+import random
+#path modülünü çağır ve aç
+from os import path
+#pygame modülünü aç
+import pygame
+
+#fotoğraflar için bu klosörü çağır
+FOTOĞRAFLAR = path.join(path.dirname(__file__), 'fotoğraflar')
+#sesler için bu klosörü çağır
+SES_DOSYALARI = path.join(path.dirname(__file__), 'ses dosyaları')
+
+#açılan pencerenin boyutları
+YATAY_EKRAN_BOYUTU= 700
+DİKEY_EKRAN_BOYUTU= 650
+#oyundan alınan en yüksek fps
+FPS = 60
+#güç artışı 10 sn sürer
+GÜÇLENDİRME = 10000
+#can barı boyutları
+KALKANIN_CANI = 200
+KALKAN_CANININ_KALINLIĞI = 10
+
+#oyundaki renkler
+BEYAZ = (255, 255, 255)
+SİYAH = (0, 0, 0)
+KIRMIZI = (255, 0, 0)
+#YEŞİL = (0, 255, 0)
+#MAVİ = (0, 0, 255)
+#SARI = (255, 255, 0)
+
+
+pygame.init() #pygame için gerekli modülleri açar
+pygame.mixer.init()  # #bunu bilmiyorum
+PENCERE = pygame.display.set_mode((YATAY_EKRAN_BOYUTU, DİKEY_EKRAN_BOYUTU)) #oyunun penceresinin boyutları
+pygame.display.set_caption(" UZAY MACERASI ") # oyunun penceresinin ismi
+clock = pygame.time.Clock() #fps ayarlayıcı    
+
+
+YAZI_FONTU = pygame.font.match_font('Courier New') # oyundaki yazıların fontu
+
+## girdiğimiz değerleri ekranda gösteren komut 
+def main_menu():
+    global PENCERE #tüm ekran
+
+    pygame.mixer.music.load(path.join(SES_DOSYALARI, "hans-zimmer-time.mp3")) # menü müziğini açar
+    pygame.mixer.music.play(1)   ### oyunun müziğini sonsuz olarak tekar eder
+
+    title = pygame.image.load(path.join(FOTOĞRAFLAR , "interstellar 2.png")).convert()# oyunun arka plan resmi
+    title = pygame.transform.scale(title, (YATAY_EKRAN_BOYUTU, DİKEY_EKRAN_BOYUTU), PENCERE)# arka plan boyutu tam pencere
+
+    PENCERE.blit(title, (0,0))  #
+    pygame.display.update() #pencereye yukarıdakileri ekle
+
+    while True: #pencere döngüsünü açık tut
+        ev = pygame.event.poll() 
+        if ev.type == pygame.KEYDOWN:
+            if ev.key == pygame.K_RETURN:
+                break
+            elif ev.key == pygame.K_q:
+                pygame.quit()
+                quit()
+        elif ev.type == pygame.QUIT:
+                pygame.quit()
+                quit() 
+        else:
+            draw_text(PENCERE, "Başlamak için [ENTER] bas", 30, YATAY_EKRAN_BOYUTU/2, DİKEY_EKRAN_BOYUTU/2) #ekrana yazı yazma boyutunu ayrlama ve nereye yazacağımız
+            draw_text(PENCERE, "Çıkmak için [Q] bas ", 30, YATAY_EKRAN_BOYUTU/2, (DİKEY_EKRAN_BOYUTU/2)+40) #ekrana yazı yazma boyutunu ayrlama ve nereye yazacağımız
+            pygame.display.update() ## yazdığımız şeyleri ekrana yükleme
+
+    
+    ready= pygame.mixer.Sound(path.join(SES_DOSYALARI,'getready.ogg')) #oyuna girerken bu sesi getir 
+    ready.play()  ### müzüiği başlat
+    PENCERE.fill(SİYAH) ### tüm ekranı siyah renk yap
+    draw_text(PENCERE, "HAZIRLAN!", 40, YATAY_EKRAN_BOYUTU/2, DİKEY_EKRAN_BOYUTU/2) #ekrana yazı yazma boyutunu ayrlama ve nereye yazacağımız
+    pygame.display.update() ## yazdığımız şeyleri ekrana yükleme
+    
+
+def draw_text(surf, text, size, x, y): ## oyun başlamadan önceki yazıların komutları ekrana vermeyi sağlar
+    font = pygame.font.Font(YAZI_FONTU, size)
+    text_surface = font.render(text, True, KIRMIZI) # Ekrana gelen hazırlan yazısının kırmızı renk yapar         
+    text_rect = text_surface.get_rect()
+    text_rect.midtop = (x, y)
+    surf.blit(text_surface, text_rect)
+
+
+def draw_shield_bar(surf, x, y, pct): #kalkan ayarları
+    pct = max(pct, 0) 
+    fill = (pct / 100) * KALKANIN_CANI # kalkan barının etrafındaki beyaz çizginin uzunlığu
+    outline_rect = pygame.Rect(x, y, KALKANIN_CANI,KALKAN_CANININ_KALINLIĞI) ## kalkan barını saran çizgi
+    fill_rect = pygame.Rect(x, y, fill,KALKAN_CANININ_KALINLIĞI) #kalkan barı
+    pygame.draw.rect(surf, SİYAH, fill_rect) ##kalkan barının rengi
+    pygame.draw.rect(surf, BEYAZ, outline_rect, 2) # beyaz çizginin kalınlığı
+
+
+def draw_lives(surf, x, y, lives, img): # geminin can ayarı
+    for i in range(lives): ##geminin kaç canı var
+        img_rect= img.get_rect() ##
+        img_rect.x = x + 1 * i
+        img_rect.y = y
+        surf.blit(img, img_rect)
+
+
+
+def newmob():
+    mob_element = Mob()
+    all_sprites.add(mob_element)
+    mobs.add(mob_element)
+
+class Explosion(pygame.sprite.Sprite):
+    def __init__(self, center, size):
+        pygame.sprite.Sprite.__init__(self)
+        self.size = size
+        self.image = explosion_anim[self.size][0]
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+        self.frame = 0 
+        self.last_update = pygame.time.get_ticks()
+        self.frame_rate = 75
+
+    def update(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_update > self.frame_rate:
+            self.last_update = now
+            self.frame += 1
+            if self.frame == len(explosion_anim[self.size]):
+                self.kill()
+            else:
+                center = self.rect.center
+                self.image = explosion_anim[self.size][self.frame]
+                self.rect = self.image.get_rect()
+                self.rect.center = center
+
+
+class Player(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        ## scale the player img down
+        self.image = pygame.transform.scale(Uzay_Gemisi, (50, 38)) ##uzay gemisinin boyutları
+        self.image.set_colorkey(SİYAH) # uzay gemisin,n arka planı arka planı
+        self.rect = self.image.get_rect()
+        self.radius = 20 ###meteorlardan alınan puan ve kalkan hesaplaması
+        self.rect.centerx = YATAY_EKRAN_BOYUTU/ 2 # uzay gemisinin hangi konumda başlayacağı x=350
+        self.rect.bottom = DİKEY_EKRAN_BOYUTU - 10 #uzay gemisinin hangi konumda gezeceğini belirten kod y=640 gemi gezer
+        self.speedx = 0,1 ## oyundaki nesnelerin hızı
+        self.shield = 100 ### kalkanın kaç can verdiği
+        self.shoot_delay = 500 ## ateş etme aralığı ##1000 delay 1 saniye      
+        self.last_shot = pygame.time.get_ticks() 
+        self.lives = 1 ## oyundaki can  sayısı
+        self.hidden = False
+        self.hide_timer = pygame.time.get_ticks()
+        self.power = 1 ## oyundaki atış gücü
+        self.power_timer = pygame.time.get_ticks()
+
+    def update(self):
+        
+        if self.power >=2 and pygame.time.get_ticks() - self.power_time > GÜÇLENDİRME: ## her yıldırımı aldığında gücün artar
+            self.power -= 1    ##geminin normal atış gücü
+            self.power_time = pygame.time.get_ticks() ##gücünün kaç saniye arrtığını
+
+        ## unhide 
+        if self.hidden and pygame.time.get_ticks() - self.hide_timer > 1000:
+            self.hidden = False
+            self.rect.centerx = YATAY_EKRAN_BOYUTU/ 2
+            self.rect.bottom = DİKEY_EKRAN_BOYUTU- 30
+
+        self.speedx = 0   
+       
+        keystate = pygame.key.get_pressed()     #### klavyedeki tüm tuşları kullanılabilir hale getirir
+        if keystate[pygame.K_a]: ## a tuşu oyun gemisini x ekseninde -5 hareket ettirir
+            self.speedx = -5 ## oyun gemisinin x ekseninde -5 hareket ettiren komut
+        elif keystate[pygame.K_d]: ## d tuşu oyun gemisini x ekseninde 5 hareket ettirir
+            self.speedx = 5  ## oyun gemisinin x ekseninde +5 hareket ettiren komut
+
+        
+        if keystate[pygame.K_SPACE]: ## speace ateş etme tuşu
+            self.shoot() ## ateş komutu
+
+        
+        if self.rect.right > YATAY_EKRAN_BOYUTU: ## geminin sağ tarafa dogru gideceği değerler
+            self.rect.right = YATAY_EKRAN_BOYUTU ## geminin sağ tarafa doğrugidecegi son yer x=700
+        if self.rect.left < 0:  ## geminin sağ tarafa dogru gideceği değerler
+            self.rect.left = 0  ## geminin sağ tarafa doğrugidecegi son yer x=700
+
+        self.rect.x += self.speedx
